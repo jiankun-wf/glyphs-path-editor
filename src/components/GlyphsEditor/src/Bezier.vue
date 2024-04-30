@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { Glyphs } from "../utils/parse";
+import { DotPoint } from "../types";
 
 const offset = { x: 0, y: 120 };
-
-type Path = {
-  x: number;
-  y: number;
-  type: "line" | "offcurve" | "curve";
-  id: string;
-};
 
 const emit = defineEmits<{
   select: [any];
 }>();
 
-const getLines = (data: Path[], result: Path[][] = []): Path[][] => {
+const getLines = (
+  data: DotPoint[],
+  result: DotPoint[][] = []
+): DotPoint[][] => {
   if (data.length <= 1) return result;
 
   let first = false;
@@ -157,7 +154,7 @@ const getLines = (data: Path[], result: Path[][] = []): Path[][] => {
 //   return res;
 // };
 
-const getPath = (lines: Path[]) => {
+const getPath = (lines: DotPoint[]) => {
   if (lines.length === 2) {
     const [{ x: x1, y: y1 }, { x: x2, y: y2 }] = lines;
     return `M ${x1} ${y1} L ${x2} ${y2}`;
@@ -177,6 +174,43 @@ const getPath = (lines: Path[]) => {
   return "";
 };
 
+const getSinglePath = (lines: DotPoint[]) => {
+  const ls = lines.slice(1);
+  if (ls.length === 1) {
+    const [{ x: x1, y: y1 }] = ls;
+    return `L ${x1} ${y1}`;
+  }
+
+  if (ls.length === 2) {
+    const [{ x: x1, y: y1 }, { x: x2, y: y2 }] = ls;
+    return `Q ${x1} ${y1} ${x2} ${y2}`;
+  }
+
+  if (ls.length === 3) {
+    const [{ x: x1, y: y1 }, { x: x2, y: y2 }, { x: x3, y: y3 }] = ls;
+    return `C ${x1} ${y1} ${x2} ${y2} ${x3} ${y3}`;
+  }
+
+  return "";
+};
+
+const getPathLines = (lines: DotPoint[][]) => {
+  const arr = lines.reduce<string[]>((s, i, index) => {
+    const j = index === 0 ? getPath(i) : getSinglePath(i);
+    s.push(j);
+    return s;
+  }, []);
+  return arr.join(" ");
+};
+
+const getWholePath = (paths: { lines: DotPoint[][] }[]) => {
+  const path = paths.reduce<string[]>((s, i) => {
+    s.push(getPathLines(i.lines));
+    return s;
+  }, []);
+  return path.join(" ");
+};
+
 // const getFont = (val: string) => {
 //   return eval("'" + val.replace(/uni/, "\\u").split(".")[0] + "'");
 // };
@@ -185,8 +219,6 @@ const componentsData = ref<Record<string, any>[]>([]);
 
 const resolveText = (text: string) => {
   const glyphsJson = new Glyphs(text).reslut;
-
-  console.log(glyphsJson);
 
   if (!glyphsJson) return;
 
@@ -221,6 +253,16 @@ const resolveText = (text: string) => {
                 type: type.toLowerCase(),
               };
             });
+
+            const iIndex = nodesPos.findIndex(
+              (n: DotPoint) => n.type !== "offcurve"
+            );
+
+            if (iIndex !== 0) {
+              const noEndPoints = nodesPos.splice(iIndex);
+              nodesPos.splice(0, 0, ...noEndPoints);
+            }
+
             // nodesPos.push(nodesPos[0]);
             return {
               ...p,
@@ -245,7 +287,6 @@ const handleListenUpload = () => {
   const input = document.getElementById("glyphs-upload") as HTMLInputElement;
 
   input.addEventListener("change", () => {
-    console.log(input.files);
     if (input.files?.length) {
       const currentFile = input.files[0];
       const fileReader = new FileReader();
@@ -287,14 +328,17 @@ defineExpose({
       :key="index"
       @click.stop="handleSelect(i)"
     >
-      <svg
-        width="120px"
-        height="120px"
-        viewBox="0 0 1000 1000"
-        xmlns="http://www.w3.org/2000/svg"
-      >
+      <svg width="120px" height="120px" viewBox="0 0 1200 1200">
         <g v-for="layer in i.layers" :key="layer.layerId" v-show="layer.isMain">
-          <g v-for="(p, p_index) in layer.paths" :key="p_index">
+          <path :d="getWholePath(layer.paths)" />
+        </g>
+      </svg>
+    </div>
+  </div>
+</template>
+
+<!-- 
+        <g v-for="(p, p_index) in layer.paths" :key="p_index">
             <path
               v-for="(line, l_index) in p.lines"
               :key="l_index"
@@ -305,11 +349,7 @@ defineExpose({
               :d="getPath(line)"
             />
           </g>
-        </g>
-      </svg>
-    </div>
-  </div>
-</template>
+ -->
 
 <style scoped>
 .input-wrapper {

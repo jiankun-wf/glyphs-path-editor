@@ -23,6 +23,9 @@ const handleSelect = (data: any) => {
 };
 
 const handleSave = (data: { layers: Record<string, any>[] }) => {
+  if (!unref(currentSelectData)) {
+    return;
+  }
   unref(currentSelectData).layers = merge(
     unref(currentSelectData).layers,
     data.layers

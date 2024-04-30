@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Konva from "konva";
 import { onMounted, ref, unref } from "vue";
-import type { DotPoint } from "../types/index";
+import type { DotPoint } from "../types";
 
 const props = defineProps<{
   width?: number;
@@ -349,7 +349,9 @@ const handleSave = () => {
 
   console.log(resultData);
 
-  emit("save", { layers: resultData ?? [] });
+  if (resultData?.length) {
+    emit("save", { layers: resultData ?? [] });
+  }
 };
 
 onMounted(() => {

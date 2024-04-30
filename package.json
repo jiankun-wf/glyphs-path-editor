@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@types/lodash-es": "^4.17.12",
+    "hotkeys-js": "^3.13.7",
     "konva": "^9.3.2",
     "lodash-es": "^4.17.21",
     "vue": "^3.3.11"
